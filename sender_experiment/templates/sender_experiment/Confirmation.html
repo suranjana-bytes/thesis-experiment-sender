@@ -1,0 +1,12 @@
+{{ extends "sender_experiment/BaseLayout.html" }}
+
+{{ block body_content }}
+<p>You chose the following set of numbers:</p>
+<div class="highlight-box">
+  <strong>Selected set</strong>
+  <div class="big-value">{{ selected_messages_text }}</div>
+</div>
+<p>This message will be shown to the Receiver.</p>
+<p>Press Confirm to continue.</p>
+<button class="otree-btn-next btn btn-primary">Confirm</button>
+{{ endblock }}

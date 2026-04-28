@@ -1,0 +1,9 @@
+{{ extends "sender_experiment/BaseLayout.html" }}
+
+{{ block body_content }}
+<p>Please complete the final questionnaire.</p>
+{{ formfield player.age label="1. What is your age?" }}
+{{ formfield player.gender label="2. What is your gender?" }}
+{{ formfield player.education label="3. What is your highest level of education?" }}
+<button class="otree-btn-next btn btn-primary">Submit</button>
+{{ endblock }}

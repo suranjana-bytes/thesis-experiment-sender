@@ -1,0 +1,20 @@
+{{ extends "sender_experiment/BaseLayout.html" }}
+
+{{ block body_content }}
+<p>You must now send a message to the Receiver.</p>
+<p>The Receiver will see your message, but will not know the real number.</p>
+<p>Please choose one of the following sets of numbers. The secret number must be part of the set you choose.</p>
+<div class="message-options">
+  {{ for choice in message_choices }}
+    <label class="message-option-card">
+      <input type="radio" name="sent_message" value="{{ choice }}" class="message-choice-input" {{ if saved_message_value == choice }}checked{{ endif }} />
+      <span>{{ choice }}</span>
+    </label>
+  {{ endfor }}
+</div>
+<p>Select one option and press Submit.</p>
+{{ if form.sent_message.errors }}
+  <div class="form-error">{{ form.sent_message.errors.0 }}</div>
+{{ endif }}
+<button class="otree-btn-next btn btn-primary">Submit</button>
+{{ endblock }}

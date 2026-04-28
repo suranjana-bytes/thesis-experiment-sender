@@ -1,0 +1,12 @@
+{{ extends "sender_experiment/BaseLayout.html" }}
+
+{{ block body_content }}
+<p>The computer has generated a secret number for this round. Your secret number is:</p>
+<div class="highlight-box">
+  <strong>Secret Number</strong>
+  <div class="big-value">{{ player.type_number }}</div>
+</div>
+<p>The Receiver does not know this number.</p>
+<p>Press Next to continue.</p>
+<button class="otree-btn-next btn btn-primary">Next</button>
+{{ endblock }}
