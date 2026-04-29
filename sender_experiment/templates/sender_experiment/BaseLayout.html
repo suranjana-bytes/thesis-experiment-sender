@@ -79,10 +79,21 @@
   .card-topline {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 16px;
     margin-bottom: 20px;
     color: var(--muted);
     font-size: 0.98rem;
+  }
+
+  .countdown-chip {
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(47, 92, 103, 0.08);
+    color: var(--secondary);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
   }
 
   .progress-track {
@@ -104,18 +115,6 @@
 
   .screen-content {
     padding: 30px 0 18px;
-  }
-
-  .eyebrow {
-    display: inline-flex;
-    padding: 9px 15px;
-    border-radius: 999px;
-    background: var(--secondary-soft);
-    color: var(--secondary);
-    font-size: 0.83rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
   }
 
   h1,
@@ -185,9 +184,11 @@
 
   .btn-primary,
   .otree-btn-next {
+    display: block;
     border: 0;
     border-radius: 999px;
     padding: 14px 28px;
+    margin: 28px 0 0 auto;
     background: linear-gradient(180deg, #c86d3b, var(--primary));
     color: white;
     font-weight: 700;
@@ -245,9 +246,19 @@
     font-weight: 700;
   }
 
+  .raven-screen {
+    margin-top: 0.35rem;
+  }
+
+  .raven-instruction {
+    margin-bottom: 0.65rem;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
   .raven-matrix-wrap {
-    margin: 1rem 0 1.4rem;
-    padding: 1rem;
+    margin: 0.75rem 0 1rem;
+    padding: 0.75rem;
     border: 1px solid var(--border);
     border-radius: 22px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), var(--card-strong));
@@ -257,7 +268,7 @@
   .raven-matrix-image {
     display: block;
     width: 100%;
-    max-width: 620px;
+    max-width: 540px;
     margin: 0 auto;
     height: auto;
   }
@@ -265,18 +276,18 @@
   .raven-options-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.9rem;
-    margin-bottom: 1rem;
+    gap: 0.55rem;
+    margin-bottom: 0.8rem;
   }
 
   .raven-option-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.9rem;
+    gap: 0.3rem;
+    padding: 0.5rem 0.35rem 0.45rem;
     border: 1px solid var(--border);
-    border-radius: 22px;
+    border-radius: 18px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), var(--card-strong));
     box-shadow: var(--shadow-soft);
     cursor: pointer;
@@ -289,13 +300,15 @@
 
   .raven-option-image {
     width: 100%;
-    max-width: 120px;
+    max-width: 76px;
     height: auto;
   }
 
   .raven-option-label {
     font-weight: 700;
     color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.15;
   }
 
   .thank-you-scene {
@@ -425,8 +438,43 @@
       font-size: 1.8rem;
     }
 
+    .screen-content {
+      padding: 20px 0 12px;
+    }
+
+    .raven-instruction {
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .raven-matrix-wrap {
+      margin: 0.55rem 0 0.75rem;
+      padding: 0.5rem;
+      border-radius: 18px;
+    }
+
     .raven-options-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.4rem;
+    }
+
+    .raven-option-card {
+      gap: 0.25rem;
+      padding: 0.35rem 0.2rem 0.3rem;
+      border-radius: 14px;
+    }
+
+    .raven-option-input {
+      transform: scale(0.95);
+    }
+
+    .raven-option-image {
+      max-width: 62px;
+    }
+
+    .raven-option-label {
+      font-size: 0.72rem;
     }
 
     .thank-you-scene {
@@ -441,21 +489,51 @@
 {{ block content }}
 <div class="app-shell">
   <div class="experiment-card">
-    <div class="eyebrow">{{ section_title }}</div>
     <div class="screen-content">
+      {{ if section_subtitle or progress_text or countdown_seconds != None }}
       <div class="card-topline">
         <div>{{ section_subtitle }}</div>
-        <div>{{ progress_text }}</div>
+        <div>
+          {{ if progress_text }}{{ progress_text }}{{ endif }}
+          {{ if countdown_seconds != None }}
+            <span class="countdown-chip" data-countdown-seconds="{{ countdown_seconds }}"></span>
+          {{ endif }}
+        </div>
       </div>
+      {{ endif }}
       <div class="progress-track" aria-hidden="true">
         <div class="progress-fill" style="width: {{ progress_percent }}%;"></div>
       </div>
 
       <div class="screen-copy">
-        <h1>{{ page_title }}</h1>
+        {{ if page_title }}<h1>{{ page_title }}</h1>{{ endif }}
         {{ block body_content }}{{ endblock }}
       </div>
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    const countdownEl = document.querySelector('[data-countdown-seconds]');
+    if (!countdownEl) return;
+
+    let remaining = Number(countdownEl.dataset.countdownSeconds || 0);
+
+    function render() {
+      const minutes = Math.floor(Math.max(remaining, 0) / 60);
+      const seconds = Math.max(remaining, 0) % 60;
+      countdownEl.textContent = `Time remaining: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    render();
+
+    const timer = window.setInterval(() => {
+      remaining -= 1;
+      render();
+      if (remaining <= 0) {
+        window.clearInterval(timer);
+      }
+    }, 1000);
+  })();
+</script>
 {{ endblock }}

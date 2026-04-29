@@ -15,7 +15,13 @@ SESSION_CONFIG_DEFAULTS = dict(
     doc='',
 )
 
-PARTICIPANT_FIELDS = ['raven_set_id', 'raven_score', 'sender_status']
+PARTICIPANT_FIELDS = [
+    'raven_set_id',
+    'raven_score',
+    'sender_status',
+    'raven_deadline',
+    'raven_complete',
+]
 SESSION_FIELDS = []
 
 LANGUAGE_CODE = 'en'

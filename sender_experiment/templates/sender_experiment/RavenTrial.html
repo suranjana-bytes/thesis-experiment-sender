@@ -1,27 +1,29 @@
 {{ extends "sender_experiment/BaseLayout.html" }}
 
 {{ block body_content }}
-<p>Select the answer option that best completes the matrix.</p>
-<div class="raven-matrix-wrap">
-  <img src="{{ matrix_image }}" alt="Raven matrix {{ question_id }}" class="raven-matrix-image" />
+<div class="raven-screen">
+  <p class="raven-instruction">Select the answer option that best completes the matrix.</p>
+  <div class="raven-matrix-wrap">
+    <img src="{{ matrix_image }}" alt="Raven matrix {{ question_id }}" class="raven-matrix-image" />
+  </div>
+  <div class="raven-options-grid">
+    {{ for option in option_images }}
+      <label class="raven-option-card">
+        <input
+          type="radio"
+          name="{{ selected_field_name }}"
+          value="{{ option.value }}"
+          class="raven-option-input"
+          {{ if saved_selection == option.value }}checked{{ endif }}
+        />
+        <img src="{{ option.image }}" alt="{{ question_id }} option {{ option.value }}" class="raven-option-image" />
+        <span class="raven-option-label">{{ option.value }}</span>
+      </label>
+    {{ endfor }}
+  </div>
+  <input type="hidden" name="{{ rt_field_name }}" id="{{ rt_field_name }}" />
+  <button class="otree-btn-next btn btn-primary">Next</button>
 </div>
-<div class="raven-options-grid">
-  {{ for option in option_images }}
-    <label class="raven-option-card">
-      <input
-        type="radio"
-        name="{{ selected_field_name }}"
-        value="{{ option.value }}"
-        class="raven-option-input"
-        {{ if saved_selection == option.value }}checked{{ endif }}
-      />
-      <img src="{{ option.image }}" alt="{{ question_id }} option {{ option.value }}" class="raven-option-image" />
-      <span class="raven-option-label">{{ option.value }}</span>
-    </label>
-  {{ endfor }}
-</div>
-<input type="hidden" name="{{ rt_field_name }}" id="{{ rt_field_name }}" />
-<button class="otree-btn-next btn btn-primary">Next</button>
 <script>
   (function () {
     const startedAt = Date.now();

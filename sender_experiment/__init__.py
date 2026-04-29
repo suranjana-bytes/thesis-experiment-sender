@@ -1,5 +1,6 @@
 from otree.api import *
 import random
+import time
 
 
 doc = """
@@ -26,14 +27,13 @@ class C(BaseConstants):
         dict(question_id='Q30', correct_answer='R1'),
     ]
     RAVEN_SET_LABELS = dict(set1='Set 1', set2='Set 2')
-    GENDER_CHOICES = ['Male', 'Female', 'Transgender', 'Non-binary', 'Other']
+    GENDER_CHOICES = ['Male', 'Female', 'Other/prefer not to say']
     EDUCATION_CHOICES = [
         'High School diploma',
         'Bachelors Degree',
-        "Master's Degree",
-        'PhD',
-        'Other',
+        "Master's Degree or Above",
     ]
+    AGE_CHOICES = list(range(18, 101))
 
 
 class Subsession(BaseSubsession):
@@ -63,7 +63,10 @@ class Player(BasePlayer):
     raven_trial_5_selected = models.StringField(blank=True)
     raven_trial_5_correct = models.BooleanField(initial=False)
     raven_trial_5_rt_ms = models.IntegerField(blank=True)
-    age = models.IntegerField(blank=True, min=0)
+    age = models.IntegerField(
+        choices=C.AGE_CHOICES,
+        blank=True,
+    )
     gender = models.StringField(
         choices=C.GENDER_CHOICES,
         widget=widgets.RadioSelect,
@@ -77,11 +80,25 @@ class Player(BasePlayer):
 
 
 def creating_session(subsession: Subsession):
-    for player in subsession.get_players():
-        if subsession.round_number == 1:
-            player.participant.raven_set_id = 'set1' if player.participant.id_in_session % 2 == 1 else 'set2'
+    players = subsession.get_players()
+
+    if subsession.round_number == 1:
+        shuffled_players = players[:]
+        random.shuffle(shuffled_players)
+        split_index = len(shuffled_players) // 2
+
+        for index, player in enumerate(shuffled_players):
+            if len(shuffled_players) % 2 == 1 and index == len(shuffled_players) - 1:
+                player.participant.raven_set_id = random.choice(['set1', 'set2'])
+            else:
+                player.participant.raven_set_id = 'set1' if index < split_index else 'set2'
+
             player.participant.raven_score = 0
             player.participant.sender_status = ''
+            player.participant.raven_deadline = None
+            player.participant.raven_complete = False
+
+    for player in players:
         player.type_number = random.randint(1, 3)
 
 
@@ -89,48 +106,42 @@ INSTRUCTION_META = {
     'InstructionsWelcome': dict(
         section_title='Sender Experiment: Participant Instructions',
         section_subtitle='Instructions',
-        progress_text='Screen 1 of 4',
-        page_title='Welcome',
+        progress_text='Screen 1 of 3',
+        page_title='Welcome To The Study!',
     ),
     'InstructionsRole': dict(
         section_title='Sender Experiment: Participant Instructions',
         section_subtitle='Instructions',
-        progress_text='Screen 2 of 4',
+        progress_text='Screen 2 of 3',
         page_title='Important Information',
-    ),
-    'InstructionsType': dict(
-        section_title='Sender Experiment: Participant Instructions',
-        section_subtitle='Instructions',
-        progress_text='Screen 3 of 4',
-        page_title='Your Role',
     ),
     'InstructionsStatus': dict(
         section_title='Sender Experiment: Participant Instructions',
         section_subtitle='Instructions',
-        progress_text='Screen 4 of 4',
-        page_title='Raven Task',
+        progress_text='Screen 3 of 3',
+        page_title='Part 1',
     ),
 }
 
 
 POST_RAVEN_META = {
-    'GameInstructionsOverview': dict(
+    'Part2Transition': dict(
         section_title='Sender Experiment: Game Instructions',
         section_subtitle='Part 2',
         progress_text='Screen 1 of 3',
-        page_title='Description of the Game',
+        page_title='Part 2',
+    ),
+    'GameInstructionsOverview': dict(
+        section_title='Sender Experiment: Game Instructions',
+        section_subtitle='Part 2',
+        progress_text='Screen 2 of 3',
+        page_title='Part 2',
     ),
     'GameInstructionsSets': dict(
         section_title='Sender Experiment: Game Instructions',
         section_subtitle='Part 2',
-        progress_text='Screen 2 of 3',
-        page_title='Available Sets of Numbers',
-    ),
-    'GameInstructionsPayoffs': dict(
-        section_title='Sender Experiment: Game Instructions',
-        section_subtitle='Part 2',
         progress_text='Screen 3 of 3',
-        page_title='Payoffs and Summary',
+        page_title='Description of the game: Each round of the game has 4 steps.',
     ),
 }
 
@@ -147,7 +158,8 @@ RAVEN_FIELDS = {
 def instruction_context(page_name):
     context = dict(INSTRUCTION_META[page_name])
     screen_number = int(context['progress_text'].split()[1])
-    context['progress_percent'] = round((screen_number / 4) * 100)
+    context['progress_percent'] = round((screen_number / 3) * 100)
+    context['countdown_seconds'] = None
     return context
 
 
@@ -155,14 +167,15 @@ def post_raven_context(page_name):
     context = dict(POST_RAVEN_META[page_name])
     screen_number = int(context['progress_text'].split()[1])
     context['progress_percent'] = round((screen_number / 3) * 100)
+    context['countdown_seconds'] = None
     return context
 
 
 DECISION_META = {
-    'TypeRealization': (1, 'Type Realization'),
-    'MessageDecision': (2, 'Message Decision'),
+    'MessageDecision': (1, 'Secret Number'),
+    'Part2Ended': (2, 'Part 2'),
     'Demographics': (3, 'Demographic Part'),
-    'EndScreen': (4, 'Thank You'),
+    'EndScreen': (4, ''),
 }
 
 
@@ -171,6 +184,13 @@ def raven_trials_for_player(player: Player):
     if raven_set_id == 'set2':
         return C.RAVEN_SET_2
     return C.RAVEN_SET_1
+
+
+def raven_time_remaining(player: Player):
+    deadline = getattr(player.participant, 'raven_deadline', None)
+    if not deadline:
+        return 300
+    return max(0, int(deadline - time.time()))
 
 
 def current_sender_status(player: Player):
@@ -187,6 +207,14 @@ def compute_raven_score(player: Player):
     )
 
 
+def finalize_raven(player: Player):
+    score = compute_raven_score(player)
+    player.participant.raven_score = score
+    player.participant.sender_status = 'High Status' if score > 2 else 'Low Status'
+    player.participant.raven_complete = True
+    player.sender_status = player.participant.sender_status
+
+
 def available_messages_for_type(type_number: int):
     choices = []
     for start in range(1, type_number + 1):
@@ -200,13 +228,14 @@ def available_messages_for_type(type_number: int):
 
 def decision_context(player: Player, page_name):
     screen_number, page_title = DECISION_META[page_name]
-    total_screens = 4 if player.round_number == C.NUM_ROUNDS else 2
+    total_screens = 4 if player.round_number == C.NUM_ROUNDS else 1
     return dict(
         section_title='Sender Experiment: Decision Screens',
         section_subtitle=f'Round {player.round_number} of {C.NUM_ROUNDS}',
         progress_text=f'Screen {screen_number} of {total_screens}',
         page_title=page_title,
         progress_percent=round((screen_number / total_screens) * 100),
+        countdown_seconds=None,
     )
 
 
@@ -215,10 +244,11 @@ def raven_context(player: Player, trial_number: int):
     selected_field, _, rt_field = RAVEN_FIELDS[trial_number]
     return dict(
         section_title='Raven Matrices',
-        section_subtitle=f"{C.RAVEN_SET_LABELS[player.participant.raven_set_id]}",
-        progress_text=f'Trial {trial_number} of 5',
-        page_title=f"Raven Trial {trial_number}",
+        section_subtitle='',
+        progress_text='',
+        page_title=f'Question {trial_number}',
         progress_percent=round((trial_number / 5) * 100),
+        countdown_seconds=raven_time_remaining(player),
         question_id=trial['question_id'],
         matrix_image=f"/static/raven/{trial['question_id']}/stem.png",
         option_images=[
@@ -235,6 +265,8 @@ def raven_context(player: Player, trial_number: int):
 
 
 def raven_error_message(player: Player, values, trial_number: int):
+    if raven_time_remaining(player) <= 0:
+        return
     selected_field, _, rt_field = RAVEN_FIELDS[trial_number]
     selected_value = (values.get(selected_field) or '').strip()
     valid_answers = {f'R{i}' for i in range(1, 9)}
@@ -248,14 +280,11 @@ def raven_error_message(player: Player, values, trial_number: int):
 def store_raven_result(player: Player, trial_number: int):
     trial = raven_trials_for_player(player)[trial_number - 1]
     selected_field, correct_field, _ = RAVEN_FIELDS[trial_number]
-    selected_value = getattr(player, selected_field)
+    selected_value = getattr(player, selected_field, '') or ''
     setattr(player, correct_field, selected_value == trial['correct_answer'])
 
-    if trial_number == 5:
-        score = compute_raven_score(player)
-        player.participant.raven_score = score
-        player.participant.sender_status = 'High Status' if score > 2 else 'Low Status'
-        player.sender_status = player.participant.sender_status
+    if trial_number == 5 or raven_time_remaining(player) <= 0:
+        finalize_raven(player)
 
 
 class InstructionsWelcome(Page):
@@ -278,16 +307,6 @@ class InstructionsRole(Page):
         return instruction_context('InstructionsRole')
 
 
-class InstructionsType(Page):
-    @staticmethod
-    def is_displayed(player: Player):
-        return player.round_number == 1
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        return instruction_context('InstructionsType')
-
-
 class InstructionsStatus(Page):
     @staticmethod
     def is_displayed(player: Player):
@@ -297,6 +316,11 @@ class InstructionsStatus(Page):
     def vars_for_template(player: Player):
         return instruction_context('InstructionsStatus')
 
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        player.participant.raven_deadline = time.time() + (5 * 60)
+        player.participant.raven_complete = False
+
 
 class RavenTrial1(Page):
     form_model = 'player'
@@ -305,7 +329,11 @@ class RavenTrial1(Page):
 
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1
+        return player.round_number == 1 and not getattr(player.participant, 'raven_complete', False)
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return raven_time_remaining(player)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -327,7 +355,11 @@ class RavenTrial2(Page):
 
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1
+        return player.round_number == 1 and not getattr(player.participant, 'raven_complete', False)
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return raven_time_remaining(player)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -349,7 +381,11 @@ class RavenTrial3(Page):
 
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1
+        return player.round_number == 1 and not getattr(player.participant, 'raven_complete', False)
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return raven_time_remaining(player)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -371,7 +407,11 @@ class RavenTrial4(Page):
 
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1
+        return player.round_number == 1 and not getattr(player.participant, 'raven_complete', False)
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return raven_time_remaining(player)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -393,7 +433,11 @@ class RavenTrial5(Page):
 
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1
+        return player.round_number == 1 and not getattr(player.participant, 'raven_complete', False)
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return raven_time_remaining(player)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -418,6 +462,16 @@ class GameInstructionsOverview(Page):
         return post_raven_context('GameInstructionsOverview')
 
 
+class Part2Transition(Page):
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 1
+
+    @staticmethod
+    def vars_for_template(player: Player):
+        return post_raven_context('Part2Transition')
+
+
 class GameInstructionsSets(Page):
     @staticmethod
     def is_displayed(player: Player):
@@ -430,35 +484,16 @@ class GameInstructionsSets(Page):
         return context
 
 
-class GameInstructionsPayoffs(Page):
-    @staticmethod
-    def is_displayed(player: Player):
-        return player.round_number == 1
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        return post_raven_context('GameInstructionsPayoffs')
-
-
-class TypeRealization(Page):
-    @staticmethod
-    def vars_for_template(player: Player):
-        return decision_context(player, 'TypeRealization')
-
-    @staticmethod
-    def before_next_page(player: Player, timeout_happened):
-        if not current_sender_status(player):
-            score = getattr(player.participant, 'raven_score', 0)
-            player.participant.sender_status = 'High Status' if score > 2 else 'Low Status'
-        player.sender_status = current_sender_status(player)
-
-
 class MessageDecision(Page):
     form_model = 'player'
     form_fields = ['sent_message']
 
     @staticmethod
     def vars_for_template(player: Player):
+        if not current_sender_status(player):
+            score = getattr(player.participant, 'raven_score', 0)
+            player.participant.sender_status = 'High Status' if score > 2 else 'Low Status'
+        player.sender_status = current_sender_status(player)
         context = decision_context(player, 'MessageDecision')
         context['message_choices'] = available_messages_for_type(player.type_number)
         context['saved_message_value'] = player.field_maybe_none('sent_message') or ''
@@ -488,6 +523,16 @@ class Demographics(Page):
         return decision_context(player, 'Demographics')
 
 
+class Part2Ended(Page):
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == C.NUM_ROUNDS
+
+    @staticmethod
+    def vars_for_template(player: Player):
+        return decision_context(player, 'Part2Ended')
+
+
 class EndScreen(Page):
     @staticmethod
     def is_displayed(player: Player):
@@ -501,18 +546,17 @@ class EndScreen(Page):
 page_sequence = [
     InstructionsWelcome,
     InstructionsRole,
-    InstructionsType,
     InstructionsStatus,
     RavenTrial1,
     RavenTrial2,
     RavenTrial3,
     RavenTrial4,
     RavenTrial5,
+    Part2Transition,
     GameInstructionsOverview,
     GameInstructionsSets,
-    GameInstructionsPayoffs,
-    TypeRealization,
     MessageDecision,
+    Part2Ended,
     Demographics,
     EndScreen,
 ]
