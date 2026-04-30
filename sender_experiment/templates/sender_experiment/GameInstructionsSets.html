@@ -1,11 +1,10 @@
 {{ extends "sender_experiment/BaseLayout.html" }}
 
 {{ block body_content }}
+<p>Each round of the game has 4 steps.</p>
 <p><strong>Step 1:</strong> In each round, the computer program will generate a secret number, which is 1, 2, or 3.</p>
-<p><strong>Step 2:</strong> You will be informed of the secret number. The Receiver will not know this secret number, but his/her task is to guess it.</p>
-<p><strong>Step 3:</strong> Before the Receiver guesses the secret number, you can send them information about it.</p>
-<p>This information will take the form of a set of numbers, with the only constraint that the secret number must be part of the set.</p>
-<p>For instance, if the secret number is 3, you can send any of the sets of numbers given below:</p>
+<p><strong>Step 2:</strong> You will be informed of the secret number. The Receiver will not know this secret number, but their task is to guess it.</p>
+<p><strong>Step 3:</strong> Before the Receiver guesses the secret number, you can send them information about it. This information will be a set of numbers, and the secret number always have be included in the set. For instance, if the secret number is 3, you can send any of the sets of numbers given below:</p>
 <div class="highlight-box">
   <strong>Available sets of numbers</strong>
   <ul>
@@ -14,15 +13,16 @@
     {{ endfor }}
   </ul>
 </div>
+<p>&nbsp;</p>
 <p><strong>Step 4:</strong> The information you give to the Receiver will be displayed on their screen, and the Receiver will then make their guess.</p>
 <p>In each round, the payoffs are as follows. The Receiver knows these payoffs too.</p>
-<p><strong>Your payoff:</strong> Your payoff corresponds exactly to the guess of the Receiver in this round.</p>
-<p><code>Your payoff = 4 - (guess of the Receiver)</code></p>
-<p>Simply put, you earn more when the Receiver guesses a lower secret number.</p>
-<p><strong>Receiver's payoff:</strong> The Receiver's payoff depends on how close their guess is to the secret number.</p>
-<p><code>Receiver's payoff = 3 - |guess - secret number|</code></p>
+<p><strong>Your payoff:</strong> Your payoff corresponds exactly to the guess of the Receiver in this round.<br>
+<code>Your payoff = 4 - (guess of the Receiver)</code></p>
+<p><strong>Simply put, you earn more when the Receiver guesses a lower secret number.</strong></p>
+<p><strong>Receiver's payoff:</strong> The Receiver's payoff depends on how close their guess is to the secret number.<br>
+<code>Receiver's payoff = 3 - |guess - secret number|</code></p>
 <p>where <code>|guess - secret number|</code> is the distance between the guess and the secret number in the round.</p>
-<p>Simply put, the Receiver earns more when their guess is closer to the true secret number.</p>
-<p>Part 2 ends after 10 rounds. One of the 10 rounds will be randomly selected at the end of the experiment for effective payment in this part.</p>
+<p><strong>Simply put, the Receiver earns more when their guess is closer to the true secret number.</strong></p>
+<p>Part 2 ends after 10 rounds. One of the 10 rounds will be randomly selected at the end of the study for effective payment in this part.</p>
 <button class="otree-btn-next btn btn-primary">Next</button>
 {{ endblock }}

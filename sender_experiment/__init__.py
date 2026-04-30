@@ -12,6 +12,7 @@ class C(BaseConstants):
     NAME_IN_URL = 'sender_experiment'
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 10
+    STATIC_ASSET_VERSION = '20260430-q11fix'
     RAVEN_SET_1 = [
         dict(question_id='Q2', correct_answer='R2'),
         dict(question_id='Q8', correct_answer='R1'),
@@ -107,13 +108,13 @@ INSTRUCTION_META = {
         section_title='Sender Experiment: Participant Instructions',
         section_subtitle='Instructions',
         progress_text='Screen 1 of 3',
-        page_title='Welcome To The Study!',
+        page_title='Welcome to the study!',
     ),
     'InstructionsRole': dict(
         section_title='Sender Experiment: Participant Instructions',
         section_subtitle='Instructions',
         progress_text='Screen 2 of 3',
-        page_title='Important Information',
+        page_title='Important information',
     ),
     'InstructionsStatus': dict(
         section_title='Sender Experiment: Participant Instructions',
@@ -129,7 +130,7 @@ POST_RAVEN_META = {
         section_title='Sender Experiment: Game Instructions',
         section_subtitle='Part 2',
         progress_text='Screen 1 of 3',
-        page_title='Part 2',
+        page_title='',
     ),
     'GameInstructionsOverview': dict(
         section_title='Sender Experiment: Game Instructions',
@@ -141,9 +142,11 @@ POST_RAVEN_META = {
         section_title='Sender Experiment: Game Instructions',
         section_subtitle='Part 2',
         progress_text='Screen 3 of 3',
-        page_title='Description of the game: Each round of the game has 4 steps.',
+        page_title='Description of the game',
     ),
 }
+
+TOTAL_STUDY_STEPS = 24
 
 
 RAVEN_FIELDS = {
@@ -155,26 +158,41 @@ RAVEN_FIELDS = {
 }
 
 
+def study_progress(current_step: int):
+    return dict(
+        progress_text=f'Step {current_step} of {TOTAL_STUDY_STEPS}',
+        progress_percent=round((current_step / TOTAL_STUDY_STEPS) * 100),
+    )
+
+
 def instruction_context(page_name):
     context = dict(INSTRUCTION_META[page_name])
-    screen_number = int(context['progress_text'].split()[1])
-    context['progress_percent'] = round((screen_number / 3) * 100)
+    instruction_steps = {
+        'InstructionsWelcome': 1,
+        'InstructionsRole': 2,
+        'InstructionsStatus': 3,
+    }
+    context.update(study_progress(instruction_steps[page_name]))
     context['countdown_seconds'] = None
     return context
 
 
 def post_raven_context(page_name):
     context = dict(POST_RAVEN_META[page_name])
-    screen_number = int(context['progress_text'].split()[1])
-    context['progress_percent'] = round((screen_number / 3) * 100)
+    post_raven_steps = {
+        'Part2Transition': 9,
+        'GameInstructionsOverview': 10,
+        'GameInstructionsSets': 11,
+    }
+    context.update(study_progress(post_raven_steps[page_name]))
     context['countdown_seconds'] = None
     return context
 
 
 DECISION_META = {
-    'MessageDecision': (1, 'Secret Number'),
-    'Part2Ended': (2, 'Part 2'),
-    'Demographics': (3, 'Demographic Part'),
+    'MessageDecision': (1, 'Secret number'),
+    'Part2Ended': (2, 'Part 2 is now over'),
+    'Demographics': (3, ''),
     'EndScreen': (4, ''),
 }
 
@@ -227,34 +245,41 @@ def available_messages_for_type(type_number: int):
 
 
 def decision_context(player: Player, page_name):
-    screen_number, page_title = DECISION_META[page_name]
-    total_screens = 4 if player.round_number == C.NUM_ROUNDS else 1
+    _, page_title = DECISION_META[page_name]
+    final_round_steps = {
+        'Part2Ended': 22,
+        'Demographics': 23,
+        'EndScreen': 24,
+    }
+    if page_name == 'MessageDecision':
+        current_step = 11 + player.round_number
+    else:
+        current_step = final_round_steps[page_name]
     return dict(
         section_title='Sender Experiment: Decision Screens',
         section_subtitle=f'Round {player.round_number} of {C.NUM_ROUNDS}',
-        progress_text=f'Screen {screen_number} of {total_screens}',
         page_title=page_title,
-        progress_percent=round((screen_number / total_screens) * 100),
         countdown_seconds=None,
+        **study_progress(current_step),
     )
 
 
 def raven_context(player: Player, trial_number: int):
     trial = raven_trials_for_player(player)[trial_number - 1]
     selected_field, _, rt_field = RAVEN_FIELDS[trial_number]
+    asset_version = C.STATIC_ASSET_VERSION
     return dict(
         section_title='Raven Matrices',
         section_subtitle='',
-        progress_text='',
         page_title=f'Question {trial_number}',
-        progress_percent=round((trial_number / 5) * 100),
         countdown_seconds=raven_time_remaining(player),
+        **study_progress(3 + trial_number),
         question_id=trial['question_id'],
-        matrix_image=f"/static/raven/{trial['question_id']}/stem.png",
+        matrix_image=f"/static/raven/{trial['question_id']}/stem.png?v={asset_version}",
         option_images=[
             dict(
                 value=f'R{i}',
-                image=f"/static/raven/{trial['question_id']}/{trial['question_id']}R{i}.png",
+                image=f"/static/raven/{trial['question_id']}/{trial['question_id']}R{i}.png?v={asset_version}",
             )
             for i in range(1, 9)
         ],

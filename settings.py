@@ -3,7 +3,7 @@ from os import environ
 SESSION_CONFIGS = [
     dict(
         name='sender_experiment',
-        display_name='Sender Experiment',
+        display_name='Sender Study',
         num_demo_participants=1,
         app_sequence=['sender_experiment'],
     ),
@@ -32,7 +32,7 @@ ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD', 'admin')
 
 DEMO_PAGE_INTRO_HTML = """
-<p>Sender experiment with participant instructions and 10 repeated decision rounds.</p>
+<p>Sender study with participant instructions and 10 repeated decision rounds.</p>
 """
 
 SECRET_KEY = environ.get('SECRET_KEY', 'replace-me-for-production')

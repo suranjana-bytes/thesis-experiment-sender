@@ -160,6 +160,10 @@
     margin: 1rem 0;
   }
 
+  .screen-copy.no-title {
+    padding-top: 1.2rem;
+  }
+
   .highlight-box {
     display: block;
     margin-top: 14px;
@@ -586,7 +590,7 @@
         <div class="progress-fill" style="width: {{ progress_percent }}%;"></div>
       </div>
 
-      <div class="screen-copy">
+      <div class="screen-copy{{ if not page_title }} no-title{{ endif }}">
         {{ if page_title }}<h1>{{ page_title }}</h1>{{ endif }}
         {{ block body_content }}{{ endblock }}
       </div>
