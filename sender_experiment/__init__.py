@@ -495,6 +495,7 @@ class MessageDecision(Page):
             player.participant.sender_status = 'High Status' if score > 2 else 'Low Status'
         player.sender_status = current_sender_status(player)
         context = decision_context(player, 'MessageDecision')
+        context['total_rounds'] = C.NUM_ROUNDS
         context['message_choices'] = available_messages_for_type(player.type_number)
         context['saved_message_value'] = player.field_maybe_none('sent_message') or ''
         return context
